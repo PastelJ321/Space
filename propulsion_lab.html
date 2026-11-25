@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111820" />
+    <meta name="color-scheme" content="dark" />
+    <title>로켓 추진제 실험</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2318202b'/%3E%3Cpath d='M16 5Q10 12 12 25h8Q22 12 16 5Z' fill='%23d8e1ec'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <script type="module" src="./src/app.js"></script>
+  </head>
+  <body>
+    <main class="lab">
+      <header class="header">
+        <h1>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M7 19V9l5-5 5 5v10M4 19h16M9 12h6M12 4v15" /></svg
+          >로켓 추진제 실험
+        </h1>
+        <span class="course">역학과 에너지</span
+        ><button
+          class="info-button"
+          id="aboutBtn"
+          aria-label="물리 모델과 참고자료 열기"
+          title="물리 모델과 참고자료"
+        >
+          i
+        </button>
+      </header>
+      <aside class="controls" aria-label="실험 조건">
+        <div class="control-heading">
+          <h2>추진 조건</h2>
+          <span>초기 질량 120 t</span>
+        </div>
+        <fieldset class="fuel-field">
+          <legend>추진제</legend>
+          <div class="fuel-options">
+            <button class="fuel active" data-fuel="rp1" aria-pressed="true">
+              RP-1</button
+            ><button class="fuel" data-fuel="ch4" aria-pressed="false">
+              CH₄</button
+            ><button class="fuel" data-fuel="lh2" aria-pressed="false">
+              LH₂
+            </button>
+          </div>
+          <div class="condition-detail">
+            <span>비추력 <span class="assumed">가정값</span></span
+            ><span><b id="ispRead">320</b> s</span>
+          </div>
+        </fieldset>
+        <div class="fraction-field">
+          <div class="field-heading">
+            <label for="fraction">추진제 질량 비율</label
+            ><output id="fractionValue" for="fraction"
+              >86.0<span>%</span></output
+            >
+          </div>
+          <div class="slider-container">
+            <input
+              id="fraction"
+              type="range"
+              min="75"
+              max="99"
+              step="0.1"
+              value="86"
+            /><span
+              id="thresholdTick"
+              class="threshold-tick"
+              title="탈출 경계"
+              aria-hidden="true"
+            ></span>
+          </div>
+          <div class="range-ends" aria-hidden="true">
+            <span>75%</span><span>99%</span>
+          </div>
+          <div class="condition-detail">
+            <span>추진제 <b id="fuelMass">103.2</b> t</span
+            ><span>질량비 <b id="massRatio">7.14</b></span>
+          </div>
+        </div>
+        <div class="predictions">
+          <div class="prediction">
+            <span>이상적 Δv</span>
+            <div><output id="dvVal">6.170</output><span>km/s</span></div>
+          </div>
+          <div class="prediction">
+            <span>연소 종료 속도</span>
+            <div><output id="cutoffVal">4.433</output><span>km/s</span></div>
+          </div>
+        </div>
+        <div class="escape-result" id="escapeResult">
+          <span class="escape-dot" aria-hidden="true"></span
+          ><strong id="escapeValue">탈출 불가</strong
+          ><span id="escapeLabel">연소 종료 예측</span>
+        </div>
+        <div class="threshold-panel">
+          <div class="threshold-heading">
+            <span>탈출 경계</span
+            ><button id="applyThreshold">
+              경계 적용 <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <div class="threshold-value">
+            <output id="thresholdFraction">98.20</output><span>%</span
+            ><span class="threshold-mass" id="thresholdMass">117.84 t</span>
+          </div>
+          <p>초기 총질량 120 t · 산화제 포함</p>
+        </div>
+        <div class="actions">
+          <button class="launch" id="launchBtn">
+            <svg aria-hidden="true" viewBox="0 0 20 20">
+              <path d="m7 4 8 6-8 6Z" /></svg
+            ><span id="launchLabel">발사</span></button
+          ><button
+            class="reset"
+            id="resetBtn"
+            aria-label="실험 초기화"
+            title="초기화"
+          >
+            <svg aria-hidden="true" viewBox="0 0 20 20">
+              <path d="M4 8a6 6 0 1 1 .7 6M4 3v5h5" /></svg
+            ><span>초기화</span>
+          </button>
+        </div>
+        <button class="compare-link" id="compareBtn" hidden>
+          연소 결과 비교 · PNG 저장 <span aria-hidden="true">↗</span>
+        </button>
+        <div class="fixed-conditions">
+          <span>연소 <b>180 s</b></span
+          ><span>진공 · 단일단 · 수직 비행</span>
+        </div>
+      </aside>
+      <section class="stage" aria-label="로켓 비행 시각화">
+        <canvas
+          id="scene"
+          role="img"
+          aria-label="3D 로켓과 지구. 고도에 따라 시야가 조정됩니다."
+        ></canvas>
+        <div class="telemetry" aria-label="현재 비행 데이터" aria-live="off">
+          <div class="telemetry-value">
+            <span class="metric-label" id="velocityLabel">수직 속도</span>
+            <div>
+              <output id="velVal" aria-live="off">0.000</output
+              ><span>km/s</span>
+            </div>
+          </div>
+          <div class="telemetry-value">
+            <span class="metric-label">고도</span>
+            <div>
+              <output id="altVal" aria-live="off">0.00</output
+              ><span id="altUnit">km</span>
+            </div>
+          </div>
+        </div>
+        <div class="phase" role="status" aria-live="polite">
+          <span aria-hidden="true"></span><span id="phaseText">발사 전</span>
+        </div>
+        <div class="escape-reference">
+          <span>현 고도 탈출 속도</span>
+          <div>
+            <output id="escapeSpeed" aria-live="off">11.186</output
+            ><span> km/s</span>
+          </div>
+        </div>
+        <div class="scene-caption" id="sceneCaption">로켓 확대 · 자동 시야</div>
+        <div class="flight-strip">
+          <div class="time-readout">
+            <span class="time-label">경과 시간</span
+            ><span
+              ><output id="timeVal" aria-live="off">0.0</output
+              ><small id="timeUnit"> s</small></span
+            >
+          </div>
+          <div class="burn-meter">
+            <div class="burn-labels">
+              <span id="burnLabel">남은 추진제</span
+              ><span
+                ><output id="remainingFuel" aria-live="off">103.2</output>
+                t</span
+              >
+            </div>
+            <div class="burn-track"><div id="fuelProgress"></div></div>
+            <span class="burn-note" id="burnNote">연소 종료 180 s</span>
+          </div>
+          <label class="playback-rate" for="playbackRate"
+            ><span>재생 속도</span
+            ><select id="playbackRate">
+              <option value="12">×12</option>
+              <option value="60">×60</option>
+              <option value="300">×300</option>
+              <option value="1200">×1200</option>
+            </select></label
+          >
+        </div>
+      </section>
+      <footer class="footer">
+        <span>운동량 보존 · 로켓 방정식 · 탈출 에너지</span
+        ><span>지구 영상: NASA / GSFC</span>
+      </footer>
+    </main>
+    <dialog id="infoModal" aria-labelledby="infoTitle">
+      <div class="dialog-head">
+        <h2 id="infoTitle">물리 모델</h2>
+        <button class="close" data-close="infoModal" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <div class="dialog-body model-notes">
+        <p>
+          초기 질량 120 t의 단일단 로켓을 지표면에서 수직 발사합니다. 추진제와
+          산화제를 합친 질량이 초기 질량의 75–99%이며, 180초 동안 일정한
+          질량유량으로 소모됩니다.
+        </p>
+        <h3>운동량 보존과 로켓 방정식</h3>
+        <p>
+          추진제가 뒤로 방출되면서 로켓이 가속됩니다. 유효 배기 속도는
+          <span class="math">vₑ = Isp · g₀</span>이며, 중력이 없는 경우의 속도
+          변화량은 다음과 같습니다.
+        </p>
+        <div class="equation">Δv = Isp · g₀ · ln(m₀ / mf)</div>
+        <p>
+          이상적 Δv는 중력 손실을 제외한 값입니다. 화면의 속도와 고도는 아래
+          운동 방정식을 질량 감소와 함께 계산한 결과입니다.
+        </p>
+        <div class="equation">
+          F = ṁ · Isp · g₀<br />dv/dt = F/m(t) − μ/(R + h)²<br />dh/dt = v
+        </div>
+        <h3>탈출 판정</h3>
+        <p>
+          연소 종료 시 상승 중이고 단위 질량당 역학적 에너지 ε가 0 이상이면 탈출
+          가능으로 판정합니다. 지표면의 탈출 속도 하나를 고정 기준으로 사용하지
+          않습니다.
+        </p>
+        <div class="equation">
+          ε = v²/2 − μ/(R + h) ≥ 0<br />v탈출(h) = √[2μ/(R + h)]
+        </div>
+        <p>
+          연소 전·중에는 같은 조건의 연소 종료 상태를 미리 계산한 ‘탈출 예측’을
+          표시합니다. 연소 후에도 비행은 계속됩니다. 탈출할 에너지가 부족하면
+          최고점을 지나 낙하하며, 지표면에 도달하면 관찰이 멈춥니다. 탈출 가능한
+          경우에는 일시 정지하거나 초기화할 때까지 계속 진행합니다.
+        </p>
+        <h3>탈출에 필요한 추진제</h3>
+        <p>
+          선택한 비추력에서 연소 종료 에너지가 0이 되는 질량 비율을 수치
+          탐색합니다. 초기 총질량 120 t를 고정하므로 비율을 높이면 추진제 질량이
+          늘고 건조 질량은 줄어듭니다. ‘경계 적용’은 슬라이더의 0.1% 간격에 맞춰
+          경계 바로 위의 조건을 적용합니다.
+        </p>
+        <h3>가정과 표현</h3>
+        <ul>
+          <li>
+            비추력 RP-1 320 s, CH₄ 370 s, LH₂ 450 s는 비교용 엔진 성능
+            가정값입니다. 추진제 고유의 물성값이 아니며 실제 비추력은 엔진과
+            운용 조건에 따라 달라집니다.
+          </li>
+          <li>
+            대기 저항, 지구 자전, 궤도 진입, 다단 분리, 탱크 부피·구조 차이는
+            계산하지 않습니다. 추진제의 종류는 이 모델에서 비추력에만 영향을
+            줍니다.
+          </li>
+          <li>
+            재생 속도는 조절할 수 있습니다. 로켓은 확대 표시하며, 카메라 시야는
+            고도에 따라 달라집니다. 지구와 로켓 사이 거리는 계산된 고도로부터
+            정합니다. 로켓 모형의 크기는 실제 축척과 다릅니다. 배기 형상과 표면
+            음영은 도식적 표현입니다. 지구 지형과 구름은 과거 NASA Blue Marble
+            합성 영상이며 현재 지표·기상을 나타내지 않습니다.
+          </li>
+        </ul>
+        <p class="constants">
+          μ = 3.986004418 × 10¹⁴ m³/s² · R = 6,371 km<br />g₀ = 9.80665 m/s² ·
+          연소: RK4, Δt = 0.25 s · 관성 비행: 케플러 전파
+        </p>
+        <div class="references">
+          <span>참고자료</span
+          ><a
+            href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-rocket-equation/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >NASA · 로켓 방정식 ↗</a
+          ><a
+            href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/specific-impulse/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >NASA · 비추력 ↗</a
+          ><a
+            href="https://pwg.gsfc.nasa.gov/stargaze/Lkepl2nd.htm"
+            target="_blank"
+            rel="noopener noreferrer"
+            >NASA · 탈출과 에너지 ↗</a
+          >
+          <a
+            href="https://sos.noaa.gov/catalog/datasets/blue-marble/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >지구 영상: NASA/GSFC · NOAA Blue Marble ↗</a
+          >
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="compareModal"
+      class="comparison-dialog"
+      aria-labelledby="compareTitle"
+    >
+      <div class="dialog-head">
+        <h2 id="compareTitle">추진제별 결과</h2>
+        <button class="close" data-close="compareModal" aria-label="닫기">
+          ×
+        </button>
+      </div>
+      <div class="dialog-body">
+        <p id="compareConditions" class="compare-conditions"></p>
+        <div class="table-scroll">
+          <table>
+            <caption class="sr-only">
+              동일 조건에서 추진제별 연소 종료 결과
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">추진제</th>
+                <th scope="col">이상적 Δv<span>km/s</span></th>
+                <th scope="col">속도<span>km/s</span></th>
+                <th scope="col">고도<span>km</span></th>
+                <th scope="col">탈출</th>
+                <th scope="col">탈출 경계<span>%</span></th>
+              </tr>
+            </thead>
+            <tbody id="compareRows"></tbody>
+          </table>
+        </div>
+        <p class="chart-label">추진제 질량 비율에 따른 속도</p>
+        <canvas
+          id="comparison"
+          role="img"
+          aria-label="추진제별 연소 종료 속도와 이상적 속도 변화량 비교 그래프"
+        ></canvas>
+        <p class="chart-key">실선: 연소 종료 속도 · 점선: 이상적 Δv</p>
+        <div class="chart-legend">
+          <span><i style="background: #d6aa81"></i>RP-1</span
+          ><span><i style="background: #84bfc6"></i>CH₄</span
+          ><span><i style="background: #a8b9e5"></i>LH₂</span>
+        </div>
+        <div class="comparison-foot">
+          <span>속도·고도·탈출은 연소 종료 기준</span
+          ><button class="export" id="exportBtn">
+            PNG 저장 <span aria-hidden="true">↓</span>
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <noscript>이 실험을 사용하려면 JavaScript를 켜 주세요.</noscript>
+  </body>
+</html>
